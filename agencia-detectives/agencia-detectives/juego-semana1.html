@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El misterio del mensaje perdido · Agencia de Detectives</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* VOICE: juego de detectives para tercero, emocionante y claro; el docente lo proyecta para competir en grupo.
+   IDEA: un mapa del colegio que se explora como en un videojuego; cada persona del mapa guarda un acertijo de comunicación.
+   PICTURE: el mapa del colegio dibujado en canvas con zonas, personajes con "!" y lupas escondidas.
+   COLOUR and TYPE: papel kraft y tinta azul de la Agencia; colores por zona; Fredoka para títulos, Nunito para leer.
+   LAYOUT: pantalla de inicio con tres modos; juego con barra de estado arriba y mapa grande; ventanas de acertijo encima. */
+:root{color-scheme:light;--bg:#F6EBD6;--paper:#FFFBF2;--ink:#1F2433;--ink2:#545A6B;--acc:#C8382E;--acc2:#FBE0DC;--ok:#1F8A4C;--sh:4px 4px 0 var(--ink)}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:600 17px/1.5 Nunito,system-ui,sans-serif;overflow-x:clip;background-image:radial-gradient(rgba(31,36,51,.08) 1.2px,transparent 1.3px);background-size:22px 22px}
+h1,h2,h3{font-family:Fredoka,"Trebuchet MS",sans-serif;font-weight:600;line-height:1.12;margin:0;text-wrap:balance}
+button,input,select{font:inherit}button{cursor:pointer}
+:focus-visible{outline:4px solid #E8A825;outline-offset:2px}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:var(--paper);border:3px solid var(--ink);border-radius:18px;box-shadow:var(--sh);padding:20px}
+.btn{border:3px solid var(--ink);background:var(--acc);color:#fff;border-radius:14px;padding:9px 18px;font-weight:900;box-shadow:3px 3px 0 var(--ink);min-height:46px;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn.ghost{background:#fff;color:var(--ink)}.btn.small{padding:5px 12px;min-height:40px;font-size:.92rem}.btn.blue{background:#2C5DA8}.btn.green{background:var(--ok)}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label.f{display:block;font-weight:900;margin:12px 0 6px}
+select,input[type=text]{padding:9px 12px;border:3px solid var(--ink);border-radius:12px;background:#fff;color:var(--ink);font-weight:800;min-height:46px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:2.5px solid var(--ink);border-radius:999px;padding:3px 12px;font-weight:900;font-size:.9rem;background:#fff}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}
+.mode{text-align:left;background:#fff;border:3px solid var(--ink);border-radius:18px;box-shadow:var(--sh);padding:18px;color:var(--ink);display:grid;gap:8px;align-content:start}
+.mode .ic{font-size:2.2rem}.mode h3{font-size:1.3rem}.mode small{color:var(--ink2);font-weight:800}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.hero h1{font-size:clamp(1.8rem,4.5vw,2.8rem)}
+.bubble{background:#fff;border:3px solid var(--ink);border-radius:18px;padding:12px 16px;box-shadow:var(--sh);margin-top:10px}
+.scale{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}
+.scale div{border:2.5px solid var(--ink);border-radius:12px;padding:8px;text-align:center;font-weight:900;background:#fff}
+.scale b{display:block;font-family:Fredoka,sans-serif;font-size:1.05rem}
+.S{background:#D8F0E2!important}.A{background:#DCE7F7!important}.B{background:#FFF0C7!important}.J{background:#FBE0DC!important}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}.swatches button{width:46px;height:46px;border-radius:50%;border:3px solid var(--ink)}.swatches button[aria-pressed=true]{box-shadow:0 0 0 4px #E8A825}
+/* juego */
+.hud{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.hud .chip{background:#fff}.hud .grow{flex:1}
+.stage{position:relative;border:3px solid var(--ink);border-radius:18px;overflow:hidden;box-shadow:var(--sh);background:#E9DCC0;touch-action:none}
+canvas#world{display:block;width:100%;height:auto}
+.prompt{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:var(--ink);color:#FFF4D6;border-radius:999px;padding:8px 16px;font-weight:900;display:none;white-space:nowrap}
+.help{font-size:.9rem;color:var(--ink2);margin-top:8px}
+.modal{position:fixed;inset:0;background:rgba(31,36,51,.6);display:none;place-items:center;z-index:50;padding:14px}.modal.show{display:grid}
+.modal .card{max-width:640px;width:100%;max-height:92vh;overflow:auto;animation:pop .35s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{transform:scale(.7);opacity:0}}
+.who{display:flex;gap:12px;align-items:center;margin-bottom:10px}.who .face{width:54px;height:54px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font-size:1.6rem;flex:none}
+.ctx{background:#fff;border:2.5px dashed var(--ink2);border-radius:12px;padding:10px 14px;margin:8px 0;font-weight:800}
+.q{font:600 1.25rem/1.3 Fredoka,sans-serif;margin:10px 0}
+.opts{display:grid;gap:10px}.opts .btn{background:#fff;color:var(--ink);justify-content:flex-start;text-align:left}
+.opts .btn.ok{background:#D8F0E2;border-color:var(--ok)}.opts .btn.bad{background:#FBE0DC}
+.lab{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:2px dashed rgba(31,36,51,.2)}
+.lab.ok select{background:#D8F0E2}.lab.bad select{background:#FBE0DC}
+.fb{min-height:26px;margin-top:10px;font-weight:900}.fb.ok{color:var(--ok)}.fb.bad{color:var(--acc)}
+.why{background:#D8F0E2;border:2.5px solid var(--ok);border-radius:12px;padding:10px 14px;margin-top:10px}
+.why.bad{background:#FFF0C7;border-color:#B8860B}
+.pista{background:#FFF0C7;border:3px solid var(--ink);border-radius:16px;padding:14px;margin-top:8px}
+.pista b{font:700 1.5rem Fredoka,sans-serif;display:block}
+.result{text-align:center}.result .nota{font:700 4.5rem/1 Fredoka,sans-serif;margin:8px 0}
+.code{font:700 clamp(1.1rem,3.5vw,1.6rem) monospace;background:#fff;border:3px dashed var(--ink);border-radius:12px;padding:10px;word-break:break-all;margin:10px 0}
+.mastery{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.mastery div{border:2.5px solid var(--ink);border-radius:12px;padding:8px;background:#fff;font-weight:900;font-size:.9rem}
+.mastery i{display:block;height:10px;border:2px solid var(--ink);border-radius:999px;margin-top:6px;background:linear-gradient(90deg,var(--ok) var(--p),#fff var(--p))}
+/* arena */
+.track{position:relative;height:300px;border:3px solid var(--ink);border-radius:18px;background:linear-gradient(90deg,#FBE0DC 0 50%,#FFF0C7 50% 72.5%,#DCE7F7 72.5% 90%,#D8F0E2 90%);overflow:hidden;box-shadow:var(--sh)}
+.track .zone{position:absolute;top:6px;font:700 .85rem Fredoka,sans-serif;transform:translateX(-50%);white-space:nowrap}
+.track .tick{position:absolute;top:0;bottom:0;border-left:2px dashed rgba(31,36,51,.35)}
+.av{position:absolute;width:38px;height:38px;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;font:700 .72rem Fredoka,sans-serif;color:#fff;transform:translate(-50%,-50%);transition:left 1s cubic-bezier(.2,.9,.3,1)}
+.av span{position:absolute;top:38px;left:50%;transform:translateX(-50%);font:800 .7rem Nunito,sans-serif;color:var(--ink);background:#fffc;border-radius:6px;padding:0 4px;white-space:nowrap}
+.podium{display:flex;gap:12px;align-items:flex-end;justify-content:center;margin:14px 0}
+.podium div{background:#fff;border:3px solid var(--ink);border-radius:12px 12px 0 0;padding:8px 12px;text-align:center;min-width:110px;font-weight:900}
+.podium .p1{height:130px;background:#FFE08A}.podium .p2{height:100px;background:#E5E7EB}.podium .p3{height:80px;background:#F3C9A4}
+table{width:100%;border-collapse:collapse;background:#fff}th,td{border:2px solid var(--ink);padding:6px 8px;text-align:left;font-size:.92rem}th{background:var(--acc2)}td.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+textarea{width:100%;min-height:110px;border:3px solid var(--ink);border-radius:12px;padding:10px;font:700 1rem monospace}
+.gbars{display:grid;gap:6px}.gbar{display:grid;grid-template-columns:130px 1fr 60px;gap:8px;align-items:center;font-weight:900;font-size:.9rem}
+.gbar i{display:block;height:22px;border:2.5px solid var(--ink);border-radius:6px;background:#2C5DA8}
+/* carrera */
+.lanes{display:grid;gap:8px}
+.lane{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center}
+.lane .nm{font:700 1.05rem Fredoka,sans-serif;display:flex;gap:6px;align-items:center}
+.lane .road{position:relative;height:56px;border:3px solid var(--ink);border-radius:999px;background:repeating-linear-gradient(90deg,#fff 0 9.5%,#F3E3C3 9.5% 10%)}
+.lane .runner{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:2rem;transition:left .8s cubic-bezier(.2,.9,.3,1)}
+.lane .goal{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:1.5rem}
+.bigq{font:600 clamp(1.4rem,3.4vw,2.2rem)/1.25 Fredoka,sans-serif;margin:10px 0}
+.bigopts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.bigopts div{border:3px solid var(--ink);border-radius:14px;padding:14px;font:600 1.2rem Fredoka,sans-serif;background:#fff}
+.bigopts div b{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--ink);color:#fff;margin-right:8px}
+.bigopts div.ok{background:#D8F0E2;border-color:var(--ok)}
+.teamtoggle{display:flex;gap:8px;flex-wrap:wrap}.teamtoggle button[aria-pressed=true]{background:#D8F0E2;border-color:var(--ok)}
+#party{position:fixed;inset:0;pointer-events:none;z-index:90}
+.foot{text-align:center;color:var(--ink2);font-size:.85rem;padding:20px}
+@media (max-width:760px){.modes,.scale,.mastery,.bigopts{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr}.lane{grid-template-columns:1fr}.gbar{grid-template-columns:90px 1fr 50px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="party"></canvas>
+<div id="app" class="wrap"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true"><div class="card" id="mcard"></div></div>
+<p class="foot">🦉 Agencia de Detectives · Semana 1 · Elementos de la comunicación — Todo funciona en este navegador; no se envía ningún dato.</p>
+<script>
+{
+/* ================= datos ================= */
+const SEDES={R:{name:'El Retiro',groups:['3A','3B','3C','3D']},M:{name:'Medellín',groups:['3A','3B','3C','3D','3E','3F']}};
+const COLORS=['#C8382E','#2C5DA8','#1F7A57','#C26419','#6B3FA0','#17707C','#D4537E','#3F4A5C'];
+const LEVELS=[[4.6,'Superior','S'],[4.0,'Alto','A'],[3.0,'Básico','B'],[1.0,'Bajo','J']];
+const level=n=>LEVELS.find(l=>n>=l[0]-1e-9)||LEVELS[3];
+const ELEM={E:'Emisor',R:'Receptor',M:'Mensaje',C:'Canal'};
+const PISTAS=[
+ {k:'E',x:52,y:240,t:'Emisor',d:'Es <b>quien envía el mensaje</b>: habla, escribe, dibuja o hace gestos.',ej:'Ejemplo: Luis dice «¡Me toca a mí!». Luis es el emisor.'},
+ {k:'R',x:905,y:52,t:'Receptor',d:'Es <b>quien recibe e interpreta el mensaje</b>: escucha, lee o mira.',ej:'Ejemplo: Ana escucha a Luis. Ana es la receptora.'},
+ {k:'M',x:905,y:560,t:'Mensaje',d:'Es <b>lo que se quiere comunicar</b>: la idea, la información o el sentimiento.',ej:'Ejemplo: «¡Me toca a mí!» es el mensaje.'},
+ {k:'C',x:52,y:560,t:'Canal',d:'Es <b>el medio por donde viaja el mensaje</b>: la voz, la escritura, los gestos, las imágenes o un aparato.',ej:'Ejemplo: Luis usa la voz. Un letrero usa la escritura.'}];
+// tipo: c = opción múltiple, l = etiquetar
+const R=[
+ {z:'patio',who:'Luis',face:'🧒',col:'#2C5DA8',x:120,y:120,el:'E',type:'c',ctx:'En el columpio, Luis le dice a Ana: «¡Me toca a mí en el columpio!»',q:'¿Quién es el <b>emisor</b>?',o:['Luis','Ana','El columpio'],why:'Luis es quien habla: él envía el mensaje.'},
+ {z:'patio',who:'Ana',face:'👧',col:'#D4537E',x:250,y:200,el:'M',type:'c',ctx:'Luis le dijo a Ana: «¡Me toca a mí en el columpio!»',q:'¿Cuál es el <b>mensaje</b>?',o:['«¡Me toca a mí en el columpio!»','El grito','Ana'],why:'El mensaje es lo que Luis quiere comunicar.'},
+ {z:'patio',who:'Profe Tomás',face:'🧑‍🏫',col:'#1F7A57',x:320,y:90,el:'C',type:'c',ctx:'🧩 Acertijo: «Viajo por el aire sin alas; salgo de la boca y llego a los oídos.»',q:'¿Qué <b>canal</b> soy?',o:['La voz','Una carta','Un mensaje en el celular'],why:'La voz viaja por el aire desde la boca hasta los oídos.'},
+ {z:'cafe',who:'Doña Rosa',face:'👩‍🍳',col:'#C26419',x:680,y:110,el:'*',type:'l',ctx:'En la cafetería, doña Rosa le dice a Pedro: «Forma la fila, por favor».',q:'Ponle a cada parte el nombre que le corresponde.',parts:[['Doña Rosa','E'],['Pedro','R'],['«Forma la fila, por favor»','M'],['La voz','C']],why:'Doña Rosa habla (emisor), Pedro escucha (receptor), lo que dice es el mensaje y usa la voz (canal).'},
+ {z:'cafe',who:'Pedro',face:'🧒',col:'#6B3FA0',x:820,y:200,el:'C',type:'c',ctx:'En la fila hay tanto ruido que Pedro no oye a doña Rosa.',q:'¿Qué elemento tiene un <b>problema</b>?',o:['El canal: el ruido no deja que la voz llegue bien','El emisor: doña Rosa no existe','El mensaje: no dijo nada'],why:'El ruido interrumpe el canal: la voz no llega bien al receptor.'},
+ {z:'cafe',who:'Sara',face:'👧',col:'#17707C',x:880,y:90,el:'E',type:'c',ctx:'Pedro le responde a doña Rosa: «Sí, señora».',q:'Ahora, ¿quién es el <b>emisor</b>?',o:['Pedro','Doña Rosa','La fila'],why:'¡Los papeles cambian! Ahora Pedro habla, así que él es el emisor.'},
+ {z:'banos',who:'Don Jorge',face:'🧑‍🔧',col:'#3F4A5C',x:680,y:420,el:'C',type:'c',ctx:'En la puerta del baño hay un letrero: «Deja el lavamanos limpio».',q:'¿Cuál es el <b>canal</b>?',o:['Un letrero escrito','La voz','Una llamada'],why:'El mensaje viaja escrito en el letrero.'},
+ {z:'banos',who:'Valentina',face:'👧',col:'#C8382E',x:820,y:500,el:'R',type:'c',ctx:'El letrero del baño dice: «Deja el lavamanos limpio».',q:'¿Quién es el <b>receptor</b>?',o:['Los estudiantes que usan el baño','El letrero','La puerta'],why:'Quienes leen el letrero reciben el mensaje.'},
+ {z:'banos',who:'Mateo',face:'🧒',col:'#2C5DA8',x:880,y:400,el:'C',type:'c',ctx:'🧩 Acertijo: «No tengo boca, pero hablo; no tengo voz, pero me leen. Vivo pegado en la pared.»',q:'¿Qué <b>canal</b> soy?',o:['Un cartel escrito','Un timbre','Un eco'],why:'El cartel comunica con escritura: se lee, no se escucha.'},
+ {z:'pasillo',who:'Profe Lucía',face:'👩‍🏫',col:'#1F7A57',x:110,y:420,el:'*',type:'l',ctx:'La profesora escribe en el tablero: «Mañana es el foro». Los estudiantes lo leen.',q:'Ponle a cada parte el nombre que le corresponde.',parts:[['La profesora','E'],['Los estudiantes','R'],['«Mañana es el foro»','M'],['La escritura en el tablero','C']],why:'La profesora escribe (emisor), los estudiantes leen (receptor), la frase es el mensaje y el tablero escrito es el canal.'},
+ {z:'pasillo',who:'Camila',face:'👧',col:'#D4537E',x:250,y:500,el:'C',type:'c',ctx:'Camila le hace a Juan una seña con la mano para que se acerque, sin decir nada.',q:'¿Cuál es el <b>canal</b>?',o:['Los gestos','La voz','Un libro'],why:'También comunicamos con el cuerpo: los gestos son un canal.'},
+ {z:'pasillo',who:'Juan',face:'🧒',col:'#C26419',x:320,y:400,el:'*',type:'c',ctx:'🧩 Acertijo de orden: ¿cómo viaja la comunicación?',q:'Elige el <b>orden</b> correcto.',o:['Emisor → mensaje → canal → receptor','Receptor → canal → emisor → mensaje','Mensaje → receptor → emisor → canal'],why:'El emisor crea el mensaje, lo envía por un canal y lo recibe el receptor.'},
+ {z:'central',who:'Olivia',face:'🦉',col:'#9A6539',x:480,y:322,el:'R',type:'c',ctx:'Gran acertijo 1 de 3: Luis grita un mensaje, pero no hay nadie en el patio.',q:'¿Hay comunicación completa?',o:['No: falta el receptor','Sí, siempre','Solo si el mensaje es escrito'],why:'Sin alguien que reciba el mensaje, la comunicación no se completa.'},
+ {z:'central',who:'Olivia',face:'🦉',col:'#9A6539',x:480,y:322,el:'*',type:'l',ctx:'Gran acertijo 2 de 3: en la formación, el rector habla por el micrófono: «Cuidemos los espacios del colegio».',q:'Ponle a cada parte el nombre que le corresponde.',parts:[['El rector','E'],['Toda la comunidad escolar','R'],['«Cuidemos los espacios del colegio»','M'],['La voz por el micrófono','C']],why:'El rector es el emisor; la comunidad, el receptor; la frase, el mensaje; y la voz por el micrófono, el canal.'},
+ {z:'central',who:'Olivia',face:'🦉',col:'#9A6539',x:480,y:322,el:'M',type:'c',ctx:'Gran acertijo 3 de 3: «Soy lo que se dice, se escribe o se muestra. Sin mí, el emisor no tendría nada que contar.»',q:'¿Quién soy?',o:['El mensaje','El receptor','El canal'],why:'El mensaje es el contenido de la comunicación.'}
+];
+const EXTRA=[
+ {q:'Mamá deja una nota en la nevera: «Llego a las 6». ¿Cuál es el canal?',o:['La escritura (la nota)','La voz','Los gestos']},
+ {q:'El árbitro pita y levanta una tarjeta roja. ¿Qué canales usa?',o:['Sonidos y gestos','Una carta','Un correo']},
+ {q:'En una llamada, la abuela habla y tú escuchas. ¿Quién es el receptor?',o:['Tú','La abuela','El teléfono']},
+ {q:'¿Cuál elemento es «el medio por donde viaja el mensaje»?',o:['El canal','El emisor','El receptor']},
+ {q:'Si el emisor habla en un idioma que el receptor no entiende, ¿qué pasa?',o:['El mensaje no se comprende','Todo sale bien','El canal desaparece']},
+ {q:'Un niño levanta la mano en clase para pedir la palabra. ¿Qué canal usa?',o:['Los gestos','La escritura','La radio']}];
+const MAXP=R.length*100;
+const ZONES={patio:{x:20,y:20,w:360,h:250,c:'#BFE3B4',t:'🌳 Patio'},cafe:{x:580,y:20,w:360,h:250,c:'#F7D9B0',t:'🍎 Cafetería'},pasillo:{x:20,y:330,w:360,h:250,c:'#CFE0F5',t:'🚪 Pasillos'},banos:{x:580,y:330,w:360,h:250,c:'#C9EDEA',t:'🚻 Baños'},central:{x:400,y:220,w:160,h:160,c:'#3A3F52',t:'🦉 Agencia'}};
+
+/* ================= utilidades ================= */
+const app=document.getElementById('app'),modal=document.getElementById('modal'),mcard=document.getElementById('mcard');
+const $=(s,r)=>(r||document).querySelector(s),$$=(s,r)=>[...(r||document).querySelectorAll(s)];
+const E=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+let actx=null,muted=store.get('juego_mute',false);
+function tone(f,d,t,dl){if(muted)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.type=t||'sine';o.frequency.value=f;const st=actx.currentTime+(dl||0);g.gain.setValueAtTime(.0001,st);g.gain.exponentialRampToValueAtTime(.15,st+.02);g.gain.exponentialRampToValueAtTime(.0001,st+d);o.connect(g);g.connect(actx.destination);o.start(st);o.stop(st+d+.02)}catch(e){}}
+const sOk=()=>{tone(660,.12,'triangle');tone(880,.18,'triangle',.1)},sBad=()=>tone(220,.22,'sawtooth'),sWin=()=>[523,659,784,1047].forEach((f,i)=>tone(f,.22,'triangle',i*.12)),sPick=()=>tone(990,.1,'square');
+function confetti(){const c=$('#party'),x=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;const cols=['#C8382E','#E8A825','#1F7A57','#2C5DA8','#6B3FA0','#fff'];const P=[];for(let i=0;i<160;i++)P.push({x:Math.random()*c.width,y:-20-Math.random()*c.height*.5,vx:-2+Math.random()*4,vy:2+Math.random()*4,s:5+Math.random()*7,r:Math.random()*6,vr:-.2+Math.random()*.4,c:cols[i%6]});let t=0;(function f(){x.clearRect(0,0,c.width,c.height);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);x.restore()});if(++t<240)requestAnimationFrame(f);else x.clearRect(0,0,c.width,c.height)})()}
+const notaOf=p=>Math.max(1,Math.round((1+4*p/MAXP)*10)/10);
+const clean=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,14);
+const hash=s=>{let h=7;for(const ch of s)h=(h*31+ch.charCodeAt(0))%1296;return h.toString(36).toUpperCase().padStart(2,'0')};
+const makeCode=(sede,grp,name,pts,att)=>{const b=`${sede}${grp}-${clean(name)}-${pts}-${att}`;return 'DET-'+b+'-'+hash(b)};
+function parseCode(s){const m=String(s).trim().toUpperCase().match(/^DET-([RM])(3[A-F])-([A-Z]{1,14})-(\d{1,4})-(\d{1,2})-([0-9A-Z]{2})$/);if(!m)return null;const b=`${m[1]}${m[2]}-${m[3]}-${m[4]}-${m[5]}`;if(hash(b)!==m[6])return {bad:'El código no coincide'};if(!SEDES[m[1]].groups.includes(m[2]))return {bad:'Grupo no existe en esa sede'};const p=+m[4];if(p>MAXP||p%50)return {bad:'Puntaje inválido'};return {sede:m[1],grp:m[2],name:m[3],pts:p,att:+m[5],nota:notaOf(p)}}
+const owl=w=>`<svg width="${w}" height="${Math.round(w*1.05)}" viewBox="0 0 120 126" role="img" aria-label="Olivia, la búho detective"><path d="M24 30 L34 8 L46 26Z" fill="#7A4E2D" stroke="#1F2433" stroke-width="4" stroke-linejoin="round"/><path d="M96 30 L86 8 L74 26Z" fill="#7A4E2D" stroke="#1F2433" stroke-width="4" stroke-linejoin="round"/><path d="M60 16C88 16 104 40 104 70C104 102 84 120 60 120C36 120 16 102 16 70C16 40 32 16 60 16Z" fill="#9A6539" stroke="#1F2433" stroke-width="4"/><path d="M60 64C80 64 88 82 86 98C82 112 72 116 60 116C48 116 38 112 34 98C32 82 40 64 60 64Z" fill="#F3D9A4"/><circle cx="42" cy="52" r="17" fill="#FFFBF2" stroke="#1F2433" stroke-width="4"/><circle cx="78" cy="52" r="17" fill="#FFFBF2" stroke="#1F2433" stroke-width="4"/><circle cx="44" cy="54" r="7" fill="#1F2433"/><circle cx="76" cy="54" r="7" fill="#1F2433"/><path d="M60 62L53 70L60 80L67 70Z" fill="#E8A825" stroke="#1F2433" stroke-width="3.5" stroke-linejoin="round"/><path d="M24 34C30 14 90 14 96 34C86 30 34 30 24 34Z" fill="#2C5DA8" stroke="#1F2433" stroke-width="4" stroke-linejoin="round"/><circle cx="100" cy="98" r="11" fill="#D6EEF7" stroke="#1F2433" stroke-width="4"/><path d="M92 106L84 116" stroke="#1F2433" stroke-width="6" stroke-linecap="round"/></svg>`;
+const openM=h=>{mcard.innerHTML=h;modal.classList.add('show');setTimeout(()=>{const f=mcard.querySelector('button,select');f&&f.focus()},60)};
+const closeM=()=>modal.classList.remove('show');
+
+/* ================= inicio ================= */
+let stopGame=null;
+function home(){stopGame&&stopGame();
+ app.innerHTML=`<div class="hero">${owl(120)}<div><p class="chip">Semana 1 · Lengua · Elementos de la comunicación</p><h1 style="margin-top:8px">El misterio del mensaje perdido</h1><div class="bubble">🦉 ¡Detectives! En el colegio los mensajes se están perdiendo. Recorre el patio, la cafetería, los pasillos y los baños. Encuentra las <b>lupas escondidas</b>, habla con las personas y resuelve sus <b>acertijos</b> para descubrir quién envía, quién recibe, qué se dice y por dónde viaja cada mensaje.</div></div></div>
+ <div class="modes">
+ <button class="mode" id="m1"><span class="ic">🕵️</span><h3>Misión individual</h3><small>Cada estudiante en su tableta o computador</small>Explora el colegio, resuelve 15 acertijos y recibe tu nota y tu código de detective.</button>
+ <button class="mode" id="m2"><span class="ic">🏟️</span><h3>Arena de la clase</h3><small>Para el docente · se proyecta</small>Ingresa los códigos y mira a todo el grupo en la misma escena, con el podio y las notas.</button>
+ <button class="mode" id="m3"><span class="ic">🏁</span><h3>Carrera de equipos</h3><small>Para el docente · se proyecta</small>De 2 a 6 equipos responden acertijos en voz alta y sus detectives avanzan en la pista.</button></div>
+ <div class="card" style="margin-top:22px"><h3>¿Cómo se convierte el puntaje en nota?</h3><p style="margin:6px 0 0">Cada acertijo vale <b>100 puntos</b> al primer intento y <b>50</b> al segundo. Son 15 acertijos (1.500 puntos). Nota = 1 + 4 × (puntos ÷ 1.500), con un decimal.</p>
+ <div class="scale"><div class="S"><b>Superior</b>4,6 – 5,0</div><div class="A"><b>Alto</b>4,0 – 4,5</div><div class="B"><b>Básico</b>3,0 – 3,9</div><div class="J"><b>Bajo</b>1,0 – 2,9</div></div>
+ <p class="help">Las lupas escondidas enseñan los conceptos y dan insignias, pero no cambian la nota.</p></div>`;
+ $('#m1').onclick=setup;$('#m2').onclick=arena;$('#m3').onclick=race}
+
+/* ================= registro ================= */
+function setup(){const prev=store.get('det_player',{});let col=prev.col||COLORS[0];
+ app.innerHTML=`<div class="card" style="max-width:640px;margin:0 auto"><button class="btn small ghost" id="back">← Inicio</button><h2 style="margin:12px 0 4px">Tu carné de detective</h2>
+ <label class="f" for="sede">Sede</label><select id="sede"><option value="R">El Retiro</option><option value="M">Medellín</option></select>
+ <label class="f" for="grp">Grupo</label><select id="grp"></select>
+ <label class="f" for="nm">Tu nombre y apellido</label><input type="text" id="nm" maxlength="30" style="width:100%" placeholder="Ejemplo: Sofía Gómez" value="${E(prev.name||'')}">
+ <label class="f">Color de tu detective</label><div class="swatches">${COLORS.map(c=>`<button style="background:${c}" data-c="${c}" aria-label="Color" aria-pressed="${c===col}"></button>`).join('')}</div>
+ <p class="help">Muévete con las <b>flechas</b> del teclado o <b>tocando el mapa</b>. Toca a una persona para hablar con ella.</p>
+ <div class="row" style="margin-top:12px"><button class="btn" id="go">¡Empezar la misión! 🔎</button></div><p class="fb bad" id="err"></p></div>`;
+ const fill=()=>{$('#grp').innerHTML=SEDES[$('#sede').value].groups.map(g=>`<option>${g}</option>`).join('')};
+ $('#sede').value=prev.sede||'R';fill();if(prev.grp&&SEDES[$('#sede').value].groups.includes(prev.grp))$('#grp').value=prev.grp;$('#sede').onchange=fill;
+ $$('.swatches button').forEach(b=>b.onclick=()=>{col=b.dataset.c;$$('.swatches button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+ $('#back').onclick=home;
+ $('#go').onclick=()=>{const name=$('#nm').value.trim();if(clean(name).length<2){$('#err').textContent='Escribe tu nombre para empezar.';return}
+  const att=(store.get('det_attempts',0)||0)+1;store.set('det_attempts',att);const P={sede:$('#sede').value,grp:$('#grp').value,name,col,att};store.set('det_player',P);game(P)}}
+
+/* ================= juego ================= */
+function game(P){
+ const st={pts:0,done:{},pistas:{},tries:{},x:480,y:440,tx:null,ty:null,pend:null,face:1,t:0,best:0};
+ app.innerHTML=`<div class="hud"><span class="chip" style="background:${P.col};color:#fff">🕵️ ${E(P.name)} · ${SEDES[P.sede].name} ${P.grp}</span><span class="chip" id="hp">⭐ 0 pts</span><span class="chip" id="hr">🧩 0 / ${R.length}</span><span class="chip" id="hl">🔍 0 / 4</span><span class="grow"></span><button class="btn small ghost" id="mute">${muted?'🔇':'🔊'}</button><button class="btn small ghost" id="fin">Terminar misión</button></div>
+ <div class="stage" id="stage"><canvas id="world" width="960" height="600" aria-label="Mapa del colegio. Usa las flechas o toca el mapa para moverte."></canvas><div class="prompt" id="prompt"></div></div>
+ <p class="help">⌨️ Flechas o WASD para moverte · Espacio para hablar · 👆 En tableta, toca el lugar o la persona. Las lupas ✨ están escondidas en las esquinas.</p>`;
+ const cv=$('#world'),cx=cv.getContext('2d');let raf=0;const keys={};
+ const hud=()=>{$('#hp').textContent='⭐ '+st.pts+' pts';$('#hr').textContent='🧩 '+Object.keys(st.done).length+' / '+R.length;$('#hl').textContent='🔍 '+Object.keys(st.pistas).length+' / 4'};
+ const zoneDone=z=>R.every((r,i)=>r.z!==z||st.done[i]);
+ const ready=()=>['patio','cafe','pasillo','banos'].every(zoneDone);
+ const nextCentral=()=>R.findIndex((r,i)=>r.z==='central'&&!st.done[i]);
+ const npcs=()=>{const a=[];R.forEach((r,i)=>{if(r.z!=='central')a.push(i)});const c=nextCentral();a.push(c<0?R.length-1:c);return a};
+ function rr(x,y,w,h,r,f,s){cx.beginPath();cx.roundRect?cx.roundRect(x,y,w,h,r):cx.rect(x,y,w,h);if(f){cx.fillStyle=f;cx.fill()}if(s){cx.lineWidth=3;cx.strokeStyle=s;cx.stroke()}}
+ function person(x,y,col,face,mark,scale){scale=scale||1;cx.save();cx.translate(x,y);cx.scale(scale,scale);cx.fillStyle='rgba(31,36,51,.18)';cx.beginPath();cx.ellipse(0,20,16,5,0,0,7);cx.fill();rr(-12,-2,24,22,7,col,'#1F2433');cx.beginPath();cx.arc(0,-12,12,0,7);cx.fillStyle='#F2C9A0';cx.fill();cx.lineWidth=3;cx.strokeStyle='#1F2433';cx.stroke();cx.fillStyle='#1F2433';cx.beginPath();cx.arc(-4,-13,2,0,7);cx.arc(4,-13,2,0,7);cx.fill();
+  if(face==='hat'){cx.fillStyle=col;cx.beginPath();cx.ellipse(0,-22,15,5,0,0,7);cx.fill();cx.stroke();rr(-9,-31,18,10,4,col,'#1F2433')}
+  cx.restore();if(mark){cx.font='700 20px Fredoka,sans-serif';cx.textAlign='center';const bg=mark==='!'?'#E8A825':mark==='✓'?'#1F8A4C':'#9AA0AD';cx.beginPath();cx.arc(x,y-44*scale,12,0,7);cx.fillStyle=bg;cx.fill();cx.lineWidth=3;cx.strokeStyle='#1F2433';cx.stroke();cx.fillStyle='#fff';cx.fillText(mark,x,y-37*scale)}}
+ function draw(){st.t++;cx.fillStyle='#E9DCC0';cx.fillRect(0,0,960,600);
+  cx.strokeStyle='rgba(31,36,51,.07)';cx.lineWidth=1;for(let i=0;i<960;i+=30){cx.beginPath();cx.moveTo(i,0);cx.lineTo(i,600);cx.stroke()}for(let j=0;j<600;j+=30){cx.beginPath();cx.moveTo(0,j);cx.lineTo(960,j);cx.stroke()}
+  for(const [k,z] of Object.entries(ZONES)){rr(z.x,z.y,z.w,z.h,18,z.c,'#1F2433');cx.font='700 20px Fredoka,sans-serif';cx.textAlign='left';cx.fillStyle=k==='central'?'#FFF4D6':'#1F2433';cx.fillText(z.t,z.x+14,z.y+30);
+   if(k!=='central'&&zoneDone(k)){const tw=cx.measureText(z.t).width;cx.beginPath();cx.arc(z.x+14+tw+16,z.y+23,11,0,7);cx.fillStyle='#1F8A4C';cx.fill();cx.font='700 14px Fredoka,sans-serif';cx.fillStyle='#fff';cx.textAlign='center';cx.fillText('✓',z.x+14+tw+16,z.y+28)}}
+  // decoraciones
+  cx.fillStyle='#5E8C3A';cx.beginPath();cx.arc(70,190,28,0,7);cx.fill();cx.fillStyle='#7A4E2D';cx.fillRect(65,212,10,26);
+  cx.strokeStyle='#1F2433';cx.lineWidth=4;cx.beginPath();cx.moveTo(170,70);cx.lineTo(200,40);cx.lineTo(230,70);cx.stroke();cx.lineWidth=2;cx.beginPath();cx.moveTo(192,48);cx.lineTo(192,86);cx.moveTo(208,48);cx.lineTo(208,86);cx.stroke();rr(186,84,28,6,2,'#C8382E');
+  rr(610,220,300,26,6,'#B0743B','#1F2433');for(let i=0;i<5;i++)person(640+i*26,200,['#2C5DA8','#D4537E','#1F7A57','#6B3FA0','#C26419'][i],0,0,.6);
+  rr(610,370,40,70,6,'#FFFFFF','#1F2433');rr(660,370,40,70,6,'#FFFFFF','#1F2433');cx.font='22px sans-serif';cx.textAlign='center';cx.fillStyle='#1F2433';cx.fillText('🚹',630,412);cx.fillText('🚺',680,412);rr(596,540,150,28,4,'#FFF0C7','#1F2433');cx.font='700 11px Nunito,sans-serif';cx.fillStyle='#1F2433';cx.textAlign='center';cx.fillText('Deja el lavamanos limpio',671,559);
+  rr(190,352,112,30,6,'#2D4A3A','#1F2433');cx.fillStyle='#fff';cx.font='700 11px Nunito,sans-serif';cx.textAlign='center';cx.fillText('Mañana es el foro',246,372);for(let i=0;i<6;i++)rr(40+i*22,540,18,34,3,'#8FA9CF','#1F2433');
+  // lupas
+  PISTAS.forEach(p=>{if(st.pistas[p.k])return;const s=1+Math.sin(st.t/12)*.15;cx.save();cx.translate(p.x,p.y);cx.scale(s,s);cx.font='26px sans-serif';cx.textAlign='center';cx.fillText('✨',0,8);cx.restore()});
+  // NPCs
+  npcs().forEach(i=>{const r=R[i];const locked=r.z==='central'&&!ready();person(r.x,r.y,r.col,0,locked?'🔒':st.done[i]?(st.done[i].ok?'✓':'✗'):'!',1.25);cx.font='800 13px Nunito,sans-serif';cx.textAlign='center';cx.fillStyle=r.z==='central'?'#FFF4D6':'#1F2433';cx.fillText(r.who,r.x,r.y+40)});
+  // jugador
+  person(st.x,st.y,P.col,'hat',0,1.35);cx.font='900 13px Nunito,sans-serif';cx.textAlign='center';cx.fillStyle='#1F2433';cx.fillText('Tú',st.x,st.y+44);
+  if(st.tx!=null){cx.strokeStyle='rgba(200,56,46,.6)';cx.lineWidth=3;cx.beginPath();cx.arc(st.tx,st.ty,10+Math.sin(st.t/6)*3,0,7);cx.stroke()}}
+ function near(){let best=null,bd=1e9;npcs().forEach(i=>{const r=R[i],d=Math.hypot(r.x-st.x,r.y-st.y);if(d<bd){bd=d;best=i}});return bd<62?best:null}
+ function step(){if(!modal.classList.contains('show')){let dx=0,dy=0;const sp=4;if(keys.ArrowLeft||keys.a)dx-=sp;if(keys.ArrowRight||keys.d)dx+=sp;if(keys.ArrowUp||keys.w)dy-=sp;if(keys.ArrowDown||keys.s)dy+=sp;
+  if(dx||dy){st.tx=null;st.pend=null}else if(st.tx!=null){const vx=st.tx-st.x,vy=st.ty-st.y,d=Math.hypot(vx,vy);if(d<5){st.tx=null;if(st.pend!=null){const p=st.pend;st.pend=null;talk(p)}}else{dx=vx/d*Math.min(sp+1,d);dy=vy/d*Math.min(sp+1,d)}}
+  st.x=Math.max(20,Math.min(940,st.x+dx));st.y=Math.max(30,Math.min(580,st.y+dy));
+  PISTAS.forEach(p=>{if(!st.pistas[p.k]&&Math.hypot(p.x-st.x,p.y-st.y)<34){st.pistas[p.k]=1;sPick();hud();showPista(p)}});
+  const n=near(),pr=$('#prompt');if(n!=null){pr.style.display='block';pr.textContent=(R[n].z==='central'&&!ready())?'🔒 Resuelve las 4 zonas para hablar con Olivia':st.done[n]?'✓ Ya resolviste este acertijo':'💬 Toca a '+R[n].who+' o pulsa Espacio'}else pr.style.display='none'}
+  draw();raf=requestAnimationFrame(step)}
+ function talk(i){if(i==null||st.done[i])return;const r=R[i];if(r.z==='central'&&!ready()){sBad();return}riddle(i)}
+ function showPista(p){openM(`<div class="who"><div class="face" style="background:#FFF0C7">🔍</div><div><h3>¡Encontraste una lupa!</h3><small>Insignia de concepto</small></div></div><div class="pista"><b>${p.t}</b><p style="margin:6px 0">${p.d}</p><p style="margin:0;color:var(--ink2)">${p.ej}</p></div><div class="row" style="margin-top:12px"><button class="btn" id="mok">¡Entendido!</button></div>`);$('#mok').onclick=closeM}
+ function riddle(i){const r=R[i];let tries=0;const head=`<div class="who"><div class="face" style="background:${r.col}">${r.face}</div><div><h3>${E(r.who)}</h3><small>${r.z==='central'?'Gran acertijo':'Acertijo '+(i+1)+' de '+R.length}</small></div></div><div class="ctx">${r.ctx}</div><div class="q">${r.q}</div>`;
+  const finish=(ok)=>{const pts=ok?(tries===0?100:50):0;st.done[i]={ok,pts};st.pts+=pts;hud();const msg=ok?(tries===0?'✅ ¡Excelente! +100 puntos':'✅ ¡Lo lograste al segundo intento! +50 puntos'):'Este acertijo queda sin puntos, pero ya sabes la respuesta.';
+   $('#mfb').className='fb '+(ok?'ok':'bad');$('#mfb').textContent=msg;$('#mwhy').innerHTML=`<div class="why ${ok?'':'bad'}">💡 ${r.why}</div><div class="row" style="margin-top:12px"><button class="btn" id="mnext">${Object.keys(st.done).length===R.length?'Ver mi resultado 🏆':'Seguir explorando →'}</button></div>`;
+   ok?sOk():sBad();$('#mnext').onclick=()=>{closeM();if(Object.keys(st.done).length===R.length)end()};$('#mnext').focus()};
+  const wrong=()=>{tries++;sBad();if(tries>=2){finish(false);return true}$('#mfb').className='fb bad';$('#mfb').textContent='🤔 Todavía no. Te queda un intento (vale 50 puntos). Pista: busca la lupa de «'+(r.el==='*'?'cada elemento':ELEM[r.el])+'» si no la has encontrado.';mcard.classList.remove('shake');return false};
+  if(r.type==='c'){const opts=shuffle(r.o.map((t,k)=>({t,k})));openM(head+`<div class="opts">${opts.map(o=>`<button class="btn" data-k="${o.k}">${E(o.t)}</button>`).join('')}</div><div class="fb" id="mfb" aria-live="polite"></div><div id="mwhy"></div>`);
+   $$('.opts .btn',mcard).forEach(b=>b.onclick=()=>{if(st.done[i])return;if(+b.dataset.k===0){b.classList.add('ok');$$('.opts .btn',mcard).forEach(x=>x.disabled=true);finish(true)}else{b.classList.add('bad');b.disabled=true;if(wrong()){$$('.opts .btn',mcard).forEach(x=>{x.disabled=true;if(+x.dataset.k===0)x.classList.add('ok')})}}})}
+  else{const parts=shuffle(r.parts);openM(head+parts.map((p,k)=>`<div class="lab" data-a="${p[1]}"><span>${E(p[0])}</span><select aria-label="${E(p[0])}"><option value="">Elige…</option>${Object.entries(ELEM).map(([kk,v])=>`<option value="${kk}">${v}</option>`).join('')}</select></div>`).join('')+`<div class="row" style="margin-top:12px"><button class="btn" id="mchk">Comprobar ✔</button></div><div class="fb" id="mfb" aria-live="polite"></div><div id="mwhy"></div>`);
+   $('#mchk').onclick=()=>{const rows=$$('.lab',mcard);if(rows.some(x=>!$('select',x).value)){$('#mfb').className='fb bad';$('#mfb').textContent='Elige un nombre para cada parte.';return}let all=true;rows.forEach(x=>{const ok=$('select',x).value===x.dataset.a;x.className='lab '+(ok?'ok':'bad');if(!ok)all=false});
+    if(all){$('#mchk').disabled=true;rows.forEach(x=>$('select',x).disabled=true);finish(true)}else if(wrong()){$('#mchk').disabled=true;rows.forEach(x=>{const s=$('select',x);s.value=x.dataset.a;s.disabled=true;x.className='lab ok'})}}}}
+ function end(){cancelAnimationFrame(raf);const nota=notaOf(st.pts),L=level(nota),code=makeCode(P.sede,P.grp,P.name,st.pts,P.att);
+  const m={E:[0,0],R:[0,0],M:[0,0],C:[0,0]};R.forEach((r,i)=>{const d=st.done[i];if(!d)return;const ks=r.el==='*'?['E','R','M','C']:[r.el];ks.forEach(k=>{m[k][1]+=100;m[k][0]+=d.pts})});
+  store.set('det_last',{code,nota,pts:st.pts});if(nota>=4.6){confetti()}sWin();
+  app.innerHTML=`<div class="card result" style="max-width:720px;margin:0 auto">${owl(90)}<h2>¡Misión cumplida, detective ${E(P.name)}!</h2><p class="chip ${L[2]}" style="margin-top:10px">Desempeño ${L[1]}</p><div class="nota">${nota.toFixed(1).replace('.',',')}</div><p><b>${st.pts}</b> de ${MAXP} puntos · ${Object.values(st.done).filter(d=>d.ok).length} acertijos resueltos de ${R.length} · Intento ${P.att}</p>
+  <div class="mastery">${Object.entries(m).map(([k,v])=>{const p=v[1]?Math.round(v[0]/v[1]*100):0;return `<div>${ELEM[k]}<br>${p}%<i style="--p:${p}%"></i></div>`}).join('')}</div>
+  <h3>Tu código de detective</h3><div class="code" id="code">${code}</div>
+  <p>✏️ Copia este código en la <b>tarea de la semana 1 en el AVA</b> o dáselo a tu docente para la Arena de la clase.</p>
+  <div class="row" style="justify-content:center"><button class="btn" id="cp">📋 Copiar código</button><button class="btn ghost" id="again">Jugar otra vez</button><button class="btn ghost" id="hm">Inicio</button></div><p class="help" id="cpm" aria-live="polite"></p>
+  <p class="help">Si juegas otra vez, el código dirá el número de intento. Tu docente decide qué intento cuenta.</p></div>`;
+  $('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(code);$('#cpm').textContent='¡Código copiado!'}catch(e){$('#cpm').textContent='Selecciona el código y cópialo a mano.'}};$('#again').onclick=setup;$('#hm').onclick=home}
+ const kd=e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;if(modal.classList.contains('show')){if(e.key==='Escape'&&!$('#mnext')&&!$('.opts .btn:not(:disabled)',mcard)&&!$('#mchk'))closeM();return}
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','a','s','d','w'].includes(k)){keys[k]=true;e.preventDefault()}if(e.key===' '){e.preventDefault();talk(near())}};
+ const ku=e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;keys[k]=false};
+ addEventListener('keydown',kd);addEventListener('keyup',ku);
+ cv.addEventListener('pointerdown',e=>{const b=cv.getBoundingClientRect(),x=(e.clientX-b.left)*960/b.width,y=(e.clientY-b.top)*600/b.height;let hit=null;npcs().forEach(i=>{if(Math.hypot(R[i].x-x,R[i].y-y)<34)hit=i});
+  if(hit!=null){const r=R[hit];st.tx=r.x;st.ty=r.y+40;st.pend=hit}else{st.tx=x;st.ty=y;st.pend=null}});
+ $('#mute').onclick=()=>{muted=!muted;store.set('juego_mute',muted);$('#mute').textContent=muted?'🔇':'🔊'};
+ $('#fin').onclick=()=>{openM(`<h3>¿Terminar la misión?</h3><p>Llevas ${Object.keys(st.done).length} de ${R.length} acertijos. Los que no resolviste quedan con 0 puntos.</p><div class="row"><button class="btn" id="y">Sí, terminar</button><button class="btn ghost" id="n">Seguir jugando</button></div>`);$('#y').onclick=()=>{closeM();end()};$('#n').onclick=closeM};
+ stopGame=()=>{cancelAnimationFrame(raf);removeEventListener('keydown',kd);removeEventListener('keyup',ku);stopGame=null};
+ hud();step();
+ openM(`<div class="who"><div class="face" style="background:#9A6539">🦉</div><div><h3>Olivia</h3><small>Jefa de la Agencia</small></div></div><p>¡Bienvenido, detective <b>${E(P.name)}</b>! Hay <b>15 acertijos</b> escondidos con las personas del colegio (las que tienen <b>!</b>).</p><p>1️⃣ Busca primero las <b>4 lupas ✨</b> en las esquinas: te enseñan las pistas.<br>2️⃣ Resuelve los acertijos de las 4 zonas.<br>3️⃣ Ven a la Agencia para el <b>gran acertijo</b>.</p><p>Cada acertijo vale 100 puntos al primer intento y 50 al segundo. ¡Piensa antes de responder!</p><button class="btn" id="mok">¡Vamos! 🔎</button>`);$('#mok').onclick=closeM}
+
+/* ================= arena ================= */
+function arena(){stopGame&&stopGame();let list=store.get('det_arena',[]);let filt=store.get('det_arena_f','ALL');
+ app.innerHTML=`<div class="row"><button class="btn small ghost" id="back">← Inicio</button><h2 style="flex:1">🏟️ Arena de la clase</h2><select id="fl" aria-label="Filtrar grupo"></select></div>
+ <div class="card" style="margin-top:12px"><label class="f" for="codes">Pega los códigos de los estudiantes, uno por línea</label><textarea id="codes" placeholder="DET-R3A-SOFIAGOMEZ-1450-1-XX"></textarea><div class="row" style="margin-top:8px"><button class="btn" id="add">Agregar a la arena</button><button class="btn ghost small" id="clr">Vaciar arena</button><span class="help" id="msg" aria-live="polite"></span></div>
+ <p class="help">Si un estudiante tiene varios intentos, la arena guarda el de mayor puntaje. Los datos quedan solo en este computador.</p></div>
+ <h3 style="margin:20px 0 8px">Camino al Foro: todos en la misma escena</h3><div class="track" id="track"></div>
+ <div class="podium" id="pod"></div>
+ <div class="grid card" style="margin-top:16px"><h3>Promedio por grupo</h3><div class="gbars" id="gb" style="margin-top:10px"></div></div>
+ <div class="card" style="margin-top:16px"><div class="row"><h3 style="flex:1">Notas</h3><button class="btn small blue" id="cpy">📋 Copiar para Excel</button></div><div class="scroll" style="margin-top:10px"><table id="tb"></table></div><p class="help" id="cmsg" aria-live="polite"></p></div>`;
+ const opts=['ALL',...Object.entries(SEDES).flatMap(([s,v])=>v.groups.map(g=>s+g))];$('#fl').innerHTML=opts.map(o=>`<option value="${o}">${o==='ALL'?'Todos los grupos':SEDES[o[0]].name+' '+o.slice(1)}</option>`).join('');$('#fl').value=filt;
+ const draw=()=>{const L=list.filter(x=>filt==='ALL'||x.sede+x.grp===filt).sort((a,b)=>b.pts-a.pts);
+  let h='';[[50,'Bajo'],[72.5,'Básico'],[90,'Alto'],[100,'Superior']].forEach(([p,t],i)=>{const st=i?[50,72.5,90][i-1]:0;h+=`<div class="zone" style="left:${(st+p)/2}%">${t}</div>`;if(p<100)h+=`<div class="tick" style="left:${p}%"></div>`});
+  const used={};L.forEach(x=>{const pos=Math.min(93,Math.max(4,(x.nota-1)/4*100));const b=Math.round(pos/4);used[b]=(used[b]||0)+1;const row=used[b]-1;const top=60+(row%5)*46+(Math.floor(row/5)%2)*20;h+=`<div class="av" style="left:${pos}%;top:${top}px;background:${COLORS[(x.name.length+x.grp.charCodeAt(1))%COLORS.length]}" title="${E(x.name)}">${E(x.name.slice(0,2))}<span>${E(x.name.slice(0,9))}</span></div>`});
+  $('#track').innerHTML=h||'<p style="padding:40px;text-align:center">Agrega códigos para ver a los detectives en la escena.</p>';
+  $('#pod').innerHTML=L.length?[1,0,2].filter(i=>L[i]).map(i=>`<div class="p${i+1}">${['🥇','🥈','🥉'][i]}<br>${E(L[i].name)}<br>${L[i].nota.toFixed(1).replace('.',',')}</div>`).join(''):'';
+  const G={};list.forEach(x=>{const k=x.sede+x.grp;(G[k]=G[k]||[]).push(x.nota)});const ga=Object.entries(G).map(([k,v])=>[k,v.reduce((a,b)=>a+b,0)/v.length,v.length]).sort((a,b)=>b[1]-a[1]);
+  $('#gb').innerHTML=ga.map(([k,avg,n])=>`<div class="gbar"><span>${SEDES[k[0]].name} ${k.slice(1)}</span><i style="width:${(avg-1)/4*100}%"></i><b>${avg.toFixed(1).replace('.',',')}</b></div><div class="help" style="margin:-4px 0 4px 138px">${n} estudiantes</div>`).join('')||'<p class="help">Aún no hay grupos.</p>';
+  $('#tb').innerHTML='<tr><th>#</th><th>Estudiante</th><th>Sede</th><th>Grupo</th><th>Puntos</th><th>Nota</th><th>Desempeño</th><th>Intento</th></tr>'+L.map((x,i)=>{const lv=level(x.nota);return `<tr><td class="n">${i+1}</td><td>${E(x.name)}</td><td>${SEDES[x.sede].name}</td><td>${x.grp}</td><td class="n">${x.pts}</td><td class="n">${x.nota.toFixed(1).replace('.',',')}</td><td class="${lv[2]}">${lv[1]}</td><td class="n">${x.att}</td></tr>`}).join('');
+  store.set('det_arena',list);store.set('det_arena_f',filt)};
+ $('#add').onclick=()=>{let ok=0,bad=[];$('#codes').value.split(/\s+/).filter(Boolean).forEach(c=>{const p=parseCode(c);if(!p||p.bad){bad.push(c);return}const k=p.sede+p.grp+p.name;const ex=list.find(x=>x.sede+x.grp+x.name===k);if(!ex)list.push(p);else if(p.pts>ex.pts)Object.assign(ex,p);ok++});
+  $('#msg').textContent=`${ok} código(s) agregados.`+(bad.length?` ${bad.length} no válidos: ${bad.slice(0,3).join(', ')}`:'');if(ok){$('#codes').value='';sWin()}draw()};
+ $('#clr').onclick=()=>{openM(`<h3>¿Vaciar la arena?</h3><p>Se borran todos los códigos guardados en este computador.</p><div class="row"><button class="btn" id="y">Sí, vaciar</button><button class="btn ghost" id="n">Cancelar</button></div>`);$('#y').onclick=()=>{list=[];closeM();draw()};$('#n').onclick=closeM};
+ $('#fl').onchange=()=>{filt=$('#fl').value;draw()};
+ $('#cpy').onclick=async()=>{const L=list.filter(x=>filt==='ALL'||x.sede+x.grp===filt);const t='Estudiante\tSede\tGrupo\tPuntos\tNota\tDesempeño\tIntento\n'+L.map(x=>[x.name,SEDES[x.sede].name,x.grp,x.pts,x.nota.toFixed(1).replace('.',','),level(x.nota)[1],x.att].join('\t')).join('\n');try{await navigator.clipboard.writeText(t);$('#cmsg').textContent='¡Copiado! Pégalo en Excel o en el calificador.'}catch(e){$('#cmsg').textContent='No se pudo copiar automáticamente.'}};
+ $('#back').onclick=home;draw()}
+
+/* ================= carrera de equipos ================= */
+function race(){stopGame&&stopGame();
+ const bank=shuffle([...R.filter(r=>r.type==='c').map(r=>({q:(r.ctx.replace(/^🧩 |^Gran acertijo \d de \d: /,'')+' '+r.q.replace(/<[^>]+>/g,'')),o:r.o})),...EXTRA]);
+ const EMO=['🕵️','🦊','🐢','🐯','🐼','🦉'];
+ app.innerHTML=`<div class="row"><button class="btn small ghost" id="back">← Inicio</button><h2 style="flex:1">🏁 Carrera de equipos</h2></div><div class="card" style="margin-top:12px;max-width:640px"><label class="f" for="nt">¿Cuántos equipos?</label><select id="nt">${[2,3,4,5,6].map(n=>`<option${n===4?' selected':''}>${n}</option>`).join('')}</select><div id="tn"></div><label class="f" for="goal">Meta (respuestas correctas para ganar)</label><select id="goal"><option>5</option><option selected>8</option><option>10</option></select>
+ <p class="help">Cada equipo responde en una hoja o con tarjetas A, B y C. El docente marca qué equipos acertaron y sus detectives avanzan.</p><button class="btn" id="go">¡Empezar la carrera! 🏁</button></div>`;
+ const tn=()=>{const n=+$('#nt').value;$('#tn').innerHTML=Array.from({length:n},(_,i)=>`<label class="f" for="t${i}">Equipo ${i+1}</label><input type="text" id="t${i}" value="${['Lupas','Huellas','Pistas','Linternas','Brújulas','Libretas'][i]}" maxlength="16">`).join('')};$('#nt').onchange=tn;tn();$('#back').onclick=home;
+ $('#go').onclick=()=>{const n=+$('#nt').value,goal=+$('#goal').value;const T=Array.from({length:n},(_,i)=>({name:$('#t'+i).value.trim()||'Equipo '+(i+1),e:EMO[i],p:0}));let qi=0,phase='ask',right={};
+  const draw=()=>{const q=bank[qi%bank.length];const order=q._o||(q._o=shuffle(q.o.map((t,k)=>({t,k}))));const win=T.filter(t=>t.p>=goal);
+   app.innerHTML=`<div class="row"><button class="btn small ghost" id="back">← Salir</button><h2 style="flex:1">🏁 Carrera de equipos · meta ${goal}</h2><span class="chip">Pregunta ${qi+1}</span></div>
+   <div class="lanes card" style="margin-top:12px">${T.map(t=>`<div class="lane"><div class="nm">${t.e} ${E(t.name)} <span class="chip">${t.p}</span></div><div class="road"><span class="runner" style="left:${4+t.p/goal*86}%">${t.e}</span><span class="goal">🏆</span></div></div>`).join('')}</div>
+   ${win.length?`<div class="card" style="margin-top:14px;text-align:center"><h2>🏆 ¡Gana ${win.map(w=>E(w.name)).join(' y ')}!</h2><p>Excelente trabajo, detectives.</p><button class="btn" id="re">Nueva carrera</button></div>`:
+   `<div class="card" style="margin-top:14px"><div class="bigq">${E(q.q)}</div><div class="bigopts">${order.map((o,i)=>`<div class="${phase==='show'&&o.k===0?'ok':''}"><b>${'ABC'[i]}</b>${E(o.t)}</div>`).join('')}</div>
+   ${phase==='ask'?`<div class="row" style="margin-top:14px"><button class="btn" id="rev">Mostrar respuesta</button><span class="help">Den tiempo para pensar y escribir la letra.</span></div>`:
+   `<p style="margin-top:14px;font-weight:900">¿Qué equipos acertaron? (respuesta ${'ABC'[order.findIndex(o=>o.k===0)]})</p><div class="teamtoggle">${T.map((t,i)=>`<button class="btn ghost small" data-t="${i}" aria-pressed="${!!right[i]}">${t.e} ${E(t.name)}</button>`).join('')}</div><div class="row" style="margin-top:12px"><button class="btn green" id="adv">Avanzar y siguiente pregunta →</button></div>`}</div>`}`;
+   $('#back').onclick=home;if(win.length){confetti();sWin();$('#re').onclick=race;return}
+   if(phase==='ask')$('#rev').onclick=()=>{phase='show';sPick();draw()};
+   else{$$('[data-t]').forEach(b=>b.onclick=()=>{right[b.dataset.t]=!right[b.dataset.t];b.setAttribute('aria-pressed',!!right[b.dataset.t])});$('#adv').onclick=()=>{T.forEach((t,i)=>{if(right[i])t.p++});if(Object.values(right).some(Boolean))sOk();right={};phase='ask';qi++;draw()}}};
+  draw()}}
+
+addEventListener('click',e=>{if(e.target===modal&&!$('#mnext')&&!$('.opts .btn:not(:disabled)',mcard)&&!$('#mchk'))closeM()});
+home();
+}
+</script>
+</body>
+</html>
